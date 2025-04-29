@@ -1,0 +1,579 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitLife Gym Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Montserrat:wght@600;800&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #f0f0f0, #d9d9d9);
+      color: #333;
+      line-height: 1.6;
+    }
+    header {
+      background: linear-gradient(90deg, #1e2a38, #3b4a5e);
+      padding: 35px 20px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+    header h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 3em;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: 1.5px;
+    }
+    nav {
+      margin-top: 25px;
+    }
+    nav button {
+      margin: 10px;
+      padding: 14px 30px;
+      border: none;
+      background: #00c4b4;
+      color: white;
+      cursor: pointer;
+      border-radius: 30px;
+      font-size: 1.1em;
+      transition: transform 0.2s, background 0.3s;
+    }
+    nav button:hover {
+      background: #00a69b;
+      transform: scale(1.08);
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 40px;
+    }
+    .view {
+      display: none;
+      animation: fadeIn 0.6s ease-in;
+    }
+    .view.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      background: white;
+      padding: 35px;
+      margin-bottom: 35px;
+      border-radius: 15px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+    .card h3 {
+      font-family: 'Montserrat', sans-serif;
+      margin-top: 0;
+      color: #1e2a38;
+      font-size: 2em;
+    }
+    .form-group {
+      margin-bottom: 25px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #1e2a38;
+      font-size: 1.1em;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1.1em;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: #00c4b4;
+      box-shadow: 0 0 8px rgba(0, 196, 180, 0.3);
+      outline: none;
+    }
+    button.primary {
+      background: #2e86c1;
+      color: white;
+      border: none;
+      padding: 14px 35px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 1.1em;
+      transition: background 0.3s, transform 0.2s;
+    }
+    button.primary:hover {
+      background: #256fa1;
+      transform: scale(1.05);
+    }
+    ul {
+      padding-left: 0;
+      list-style: none;
+    }
+    ul li {
+      padding: 20px 0;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1em;
+    }
+    ul li button {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    ul li button:hover {
+      background: #c0392b;
+    }
+    .home-image, .section-image, .login-image {
+      width: 100%;
+      max-height: 450px;
+      object-fit: cover;
+      border-radius: 15px;
+      margin: 25px 0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .trainer-card {
+      display: flex;
+      align-items: center;
+      margin-bottom: 25px;
+      padding: 25px;
+      background: #fafafa;
+      border-radius: 12px;
+      transition: background 0.3s;
+    }
+    .trainer-card:hover {
+      background: #f0f0f0;
+    }
+    .trainer-card img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      margin-right: 25px;
+      object-fit: cover;
+      border: 3px solid #00c4b4;
+    }
+    .plan-card {
+      display: inline-block;
+      width: 30%;
+      margin: 1.5%;
+      text-align: center;
+      background: #fafafa;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+    .plan-card:hover {
+      transform: translateY(-5px);
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 25px;
+      margin-top: 25px;
+    }
+    .gallery img {
+      width: 100%;
+      border-radius: 12px;
+      transition: transform 0.3s, box-shadow 0.3s;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .gallery img:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    footer {
+      background: #1e2a38;
+      color: white;
+      text-align: center;
+      padding: 25px;
+      margin-top: 50px;
+      font-size: 1em;
+    }
+    /* Home Page Specific Styles */
+    .hero-section {
+      position: relative;
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+    }
+    .hero-image {
+      width: 100%;
+      height: 600px;
+      object-fit: cover;
+      border-radius: 15px;
+      filter: brightness(70%);
+    }
+    .hero-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .hero-text h2 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 3.5em;
+      font-weight: 800;
+      margin: 0;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    .hero-text p {
+      font-size: 1.5em;
+      margin: 15px 0;
+      text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+    }
+    .hero-text button {
+      background: #00c4b4;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 30px;
+      color: white;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+    .hero-text button:hover {
+      background: #00a69b;
+      transform: scale(1.1);
+    }
+    .features-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin: 40px 0;
+    }
+    .feature-card {
+      background: #fafafa;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+    }
+    .feature-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    .feature-card h4 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1.5em;
+      color: #1e2a38;
+      margin: 0 0 10px;
+    }
+    .testimonial-section {
+      margin: 40px 0;
+    }
+    .testimonial-card {
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+    }
+    .testimonial-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-right: 20px;
+      object-fit: cover;
+    }
+    .testimonial-card p {
+      margin: 0;
+      font-style: italic;
+      color: #555;
+    }
+    .testimonial-card h5 {
+      font-family: 'Montserrat', sans-serif;
+      color: #1e2a38;
+      margin: 10px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>FitLife Gym Management</h1>
+    <nav>
+      <button onclick="showView('home')">Home</button>
+      <button onclick="showView('members')">Members</button>
+      <button onclick="showView('add-member')">Add Member</button>
+      <button onclick="showView('trainers')">Trainers</button>
+      <button onclick="showView('plans')">Plans</button>
+      <button onclick="showView('gallery')">Gallery</button>
+      <button onclick="showView('login')">User Login</button>
+    </nav>
+  </header>
+
+  <div class="container">
+    <section id="home" class="view active">
+      <div class="hero-section">
+        <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48" alt="Hero Image" class="hero-image">
+        <div class="hero-text">
+          <h2>Welcome to FitLife Gym</h2>
+          <p>Join our community and achieve your fitness goals with expert guidance!</p>
+          <button onclick="showView('plans')">Explore Plans</button>
+        </div>
+      </div>
+      <div class="features-section">
+        <div class="feature-card">
+          <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b" alt="Training">
+          <h4>Personalized Training</h4>
+          <p>Custom workout plans tailored to your goals by our expert trainers.</p>
+        </div>
+        <div class="feature-card">
+          <img src="https://images.unsplash.com/photo-1605296867724-fa87a8ef53fd" alt="Facilities">
+          <h4>Modern Facilities</h4>
+          <p>State-of-the-art equipment and clean, spacious workout areas.</p>
+        </div>
+        <div class="feature-card">
+          <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438" alt="Community">
+          <h4>Vibrant Community</h4>
+          <p>Connect with like-minded individuals in our group classes and events.</p>
+        </div>
+      </div>
+      <div class="testimonial-section">
+        <h3>What Our Members Say</h3>
+        <div class="testimonial-card">
+          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330" alt="Member 1">
+          <div>
+            <p>"FitLife transformed my fitness journey with amazing trainers and a supportive community!"</p>
+            <h5>Priya Sharma</h5>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e" alt="Member 2">
+          <div>
+            <p>"The facilities and personalized plans helped me achieve my goals faster than ever."</p>
+            <h5>Arjun Patel</h5>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="members" class="view">
+      <div class="card">
+        <h3>Member List</h3>
+        <img src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f" alt="Members" class="section-image">
+        <ul id="member-list">
+          <li>Rahul Verma - Age: 25 - Plan: 3 Months <button onclick="deleteMember(this)">Delete</button></li>
+          <li>Anjali Singh - Age: 28 - Plan: 1 Month <button onclick="deleteMember(this)">Delete</button></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="add-member" class="view">
+      <div class="card">
+        <h3>Add New Member</h3>
+        <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438" alt="Add Member" class="section-image">
+        <form onsubmit="addMember(event)">
+          <div class="form-group">
+            <label for="member-name">Name</label>
+            <input type="text" id="member-name" required />
+          </div>
+          <div class="form-group">
+            <label for="member-age">Age</label>
+            <input type="number" id="member-age" min="16" max="100" required />
+          </div>
+          <div class="form-group">
+            <label for="member-plan">Plan</label>
+            <select id="member-plan" required>
+              <option value="1 Month">1 Month</option>
+              <option value="3 Months">3 Months</option>
+              <option value="6 Months">6 Months</option>
+            </select>
+          </div>
+          <button class="primary" type="submit">Add Member</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="trainers" class="view">
+      <div class="card">
+        <h3>Our Expert Trainers</h3>
+        <img src="https://images.unsplash.com/photo-1598971457999-0f7f35a8b2d2" alt="Trainers" class="section-image">
+        <div class="trainer-card">
+          <img src="https://images.unsplash.com/photo-1594882645126-14020914d58d" alt="Vikram">
+          <div>
+            <h4>Vikram Rathore</h4>
+            <p>Strength Coach</p>
+          </div>
+        </div>
+        <div class="trainer-card">
+          <img src="https://images.unsplash.com/photo-1571731956977-d197d2e0fded" alt="Neha">
+          <div>
+            <h4>Neha Mishra</h4>
+            <p>Yoga Instructor</p>
+          </div>
+        </div>
+        <div class="trainer-card">
+          <img src="https://images.unsplash.com/photo-1518611012118-696072aa579a" alt="Sachin">
+          <div>
+            <h4>Sachin Kumar</h4>
+            <p>Cardio & HIIT Expert</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="plans" class="view">
+      <div class="card">
+        <h3>Membership Plans</h3>
+        <img src="https://images.unsplash.com/photo-1605296867724-fa87a8ef53fd" alt="Plans" class="section-image">
+        <div class="plan-card">
+          <h4>1 Month</h4>
+          <p>₹999</p>
+          <p>Basic Access</p>
+        </div>
+        <div class="plan-card">
+          <h4>3 Months</h4>
+          <p>₹2499</p>
+          <p>Full Access + Trainer</p>
+        </div>
+        <div class="plan-card">
+          <h4>6 Months</h4>
+          <p>₹4499</p>
+          <p>Full Access + Diet Plan</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallery" class="view">
+      <div class="card">
+        <h3>Our Gym in Action</h3>
+        <div class="gallery">
+          <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48" alt="Gym 1">
+          <img src="https://images.unsplash.com/photo-1557339352-0e141fc60b48" alt="Gym 2">
+          <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438" alt="Gym 3">
+          <img src="https://images.unsplash.com/photo-1605296866985-34b17489d8bf" alt="Gym 4">
+        </div>
+      </div>
+    </section>
+
+    <section id="login" class="view">
+      <div class="card">
+        <h3>User Login</h3>
+        <img src="https://images.unsplash.com/photo-1620948616568-0bd76b3ed18c" alt="Login" class="login-image">
+        <form onsubmit="login(event)">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" required />
+          </div>
+          <button class="primary" type="submit">Login</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p>© 2025 FitLife Gym. All Rights Reserved.</p>
+  </footer>
+
+  <script>
+    function showView(viewId) {
+      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function login(e) {
+      e.preventDefault();
+      const user = document.getElementById('username').value;
+      alert(`Welcome back, ${user}!`);
+      showView('home');
+      e.target.reset();
+    }
+
+    function addMember(e) {
+      e.preventDefault();
+      const name = document.getElementById('member-name').value;
+      const age = document.getElementById('member-age').value;
+      const plan = document.getElementById('member-plan').value;
+      const list = document.getElementById('member-list');
+      const li = document.createElement('li');
+      li.innerHTML = `${name} - Age: ${age} - Plan: ${plan} <button onclick="deleteMember(this)">Delete</button>`;
+      list.appendChild(li);
+      alert('Member added successfully!');
+      e.target.reset();
+      showView('members');
+    }
+
+    function deleteMember(button) {
+      if (confirm('Are you sure you want to delete this member?')) {
+        button.parentElement.remove();
+        alert('Member deleted successfully!');
+      }
+    }
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'937c9131ad58404f',t:'MTc0NTkwNjMwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
