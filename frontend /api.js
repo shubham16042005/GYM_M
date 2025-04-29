@@ -1,4 +1,4 @@
-const API_URL = 'https://your-backend-url.onrender.com/api'; // Replace with Render backend URL
+const API_URL = '/api'; // Relative path since frontend and backend are on the same domain
 let token = localStorage.getItem('token') || '';
 
 function login(e) {
